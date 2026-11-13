@@ -1,0 +1,33 @@
+
+module CantonFlow where
+
+template TradeAgreement
+  with
+    agreementId : Text
+    title : Text
+    buyer : Party
+    seller : Party
+    amount : Decimal
+    currency : Text
+    buyerApproved : Bool
+    sellerApproved : Bool
+  where
+    signatory seller
+    observer buyer
+
+    ensure amount > 0.0
+
+    choice ApproveByBuyer : ContractId TradeAgreement
+      controller buyer
+      do
+        assertMsg "Buyer has already approved" (not buyerApproved)
+        create this with
+          buyerApproved = True
+
+    choice ConfirmBySeller : ContractId TradeAgreement
+      controller seller
+      do
+        assertMsg "Buyer must approve first" buyerApproved
+        assertMsg "Seller has already confirmed" (not sellerApproved)
+        create this with
+          sellerApproved = True

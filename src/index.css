@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --c-canvas: 10 16 32;
+  --c-surface: 15 24 48;
+  --c-raised: 22 34 67;
+  --c-ink: 232 237 247;
+  --c-muted: 138 151 181;
+  --c-accent: 140 184 255;
+  --c-onaccent: 10 16 32;
+  --c-tint: 255 255 255;
+  --c-ok: 61 214 140;
+  --c-warn: 245 181 70;
+  --c-bad: 242 109 109;
+  --line-alpha: 0.08;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --c-canvas: 246 247 251;
+  --c-surface: 255 255 255;
+  --c-raised: 236 240 248;
+  --c-ink: 14 23 48;
+  --c-muted: 87 99 128;
+  --c-accent: 37 99 219;
+  --c-onaccent: 255 255 255;
+  --c-tint: 14 23 48;
+  --c-ok: 13 125 76;
+  --c-warn: 150 86 0;
+  --c-bad: 190 40 40;
+  --line-alpha: 0.12;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'DM Sans', sans-serif;
+  background: rgb(var(--c-canvas));
+  color: rgb(var(--c-ink));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgb(var(--c-tint) / 0.05) 25%, rgb(var(--c-tint) / 0.1) 50%, rgb(var(--c-tint) / 0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}

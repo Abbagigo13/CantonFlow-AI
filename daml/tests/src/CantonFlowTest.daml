@@ -1,0 +1,76 @@
+module CantonFlowTest where
+
+import Daml.Script
+import CantonFlow
+
+draft : Party -> Party -> TradeAgreement
+draft buyer seller = TradeAgreement with
+  agreementId = "CF-TEST0001"
+  title = "Agricultural equipment supply"
+  buyer
+  seller
+  amount = 24500.0
+  currency = "USD"
+  status = AwaitingApproval
+
+happyPath : Script ()
+happyPath = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  approved <- submit buyer $ exerciseCmd cid ApproveByBuyer
+  completed <- submit seller $ exerciseCmd approved ConfirmBySeller
+  Some t <- queryContractId seller completed
+  assertMsg "status is Completed" (t.status == Completed)
+
+rejectPath : Script ()
+rejectPath = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  rejected <- submit buyer $ exerciseCmd cid RejectByBuyer
+  Some t <- queryContractId seller rejected
+  assertMsg "status is Rejected" (t.status == Rejected)
+
+sellerCannotApprove : Script ()
+sellerCannotApprove = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  submitMustFail seller $ exerciseCmd cid ApproveByBuyer
+
+buyerCannotConfirm : Script ()
+buyerCannotConfirm = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  approved <- submit buyer $ exerciseCmd cid ApproveByBuyer
+  submitMustFail buyer $ exerciseCmd approved ConfirmBySeller
+
+mustApproveBeforeConfirm : Script ()
+mustApproveBeforeConfirm = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  submitMustFail seller $ exerciseCmd cid ConfirmBySeller
+
+cannotApproveTwice : Script ()
+cannotApproveTwice = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  cid <- submit seller $ createCmd (draft buyer seller)
+  approved <- submit buyer $ exerciseCmd cid ApproveByBuyer
+  submitMustFail buyer $ exerciseCmd approved ApproveByBuyer
+
+buyerCannotCreateOnSellersBehalf : Script ()
+buyerCannotCreateOnSellersBehalf = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  submitMustFail buyer $ createCmd (draft buyer seller)
+
+invalidAgreementsRejected : Script ()
+invalidAgreementsRejected = do
+  buyer <- allocateParty "Northstar"
+  seller <- allocateParty "Greenfield"
+  submitMustFail seller $ createCmd (draft buyer seller) { amount = 0.0 }
+  submitMustFail seller $ createCmd (draft seller seller)

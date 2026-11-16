@@ -1,162 +1,85 @@
-
 # CantonFlow AI
 
-**AI-assisted trade agreement workflows for the Canton ecosystem.**
+A workspace for private trade agreements between buyers and sellers. People sign in with a wallet signature and work as members of an organization, and each agreement is visible only to its two organizations. Agreements are stored in a database and can be committed to a Canton ledger, where the buyer and seller approve as separate parties. Either side can attach PDF and image evidence, and AI review can compare an agreement with those files, pasted text and its ledger record, as advice only. Agreements can carry terms, line items (the amount is their exact total) and a deadline after which they expire. The creator can edit or cancel an agreement until it is committed, and can send the other side a one-time invite link. Each person sees what needs their action, a live activity feed, and can export agreements as CSV or a PDF audit report. Every service shows live status.
 
-> Current status: local prototype. The backend, demo records, frontend, and initial Daml source are under development. A real Canton ledger connection and AI integration have not yet been verified.
+Built with [Arc Studio](https://studio.arc.io)
 
-## 1. What are we building?
+## Tech stack
 
-CantonFlow AI is a proposed workspace for organisations that need to create, review, and coordinate private business agreements.
+- React, Vite, TypeScript, Tailwind CSS
+- Bun API server with PostgreSQL
+- Daml contracts and tests for Canton (`daml/`), run on a local Canton ledger backed by PostgreSQL
+- PDF reports with pdf-lib
 
-The product combines a transaction dashboard, structured trade agreement data, participant approval workflows, and an AI assistant designed to help people understand agreement terms and identify issues before they proceed.
+## Development
 
-The long-term goal is to connect these workflows to the Canton Network, subject to successful contract validation, ledger integration, and appropriate participant permissions.
+Prerequisites: Bun, Docker, a JDK (17 or newer) and the Daml SDK (`dpm`).
 
-## 2. The problem
-
-Businesses frequently coordinate transactions across emails, spreadsheets, PDFs, messaging applications, and separate internal systems.
-
-This can create several problems:
-
-- Agreement details become scattered across different tools.
-- Buyers and sellers can lose track of who needs to act next.
-- Reviewing long agreement documents takes time.
-- Teams may struggle to maintain a clear record of workflow progress.
-- Sensitive commercial information needs appropriate access controls.
-- A dashboard can show a transaction's status without proving that it was committed to an authoritative ledger.
-
-These are the problems CantonFlow AI is designed to investigate and address. Their prevalence and the product's effectiveness must be validated with prospective users.
-
-## 3. Who is it for?
-
-### Primary users
-
-- Small and medium-sized businesses coordinating supply agreements.
-- Buyers and sellers managing recurring commercial transactions.
-- Trade operations teams tracking agreement status.
-- Organisations exploring private, participant-aware workflows.
-- Developers and ecosystem teams evaluating business applications for Canton.
-
-### Example use case
-
-An agricultural equipment buyer agrees to purchase equipment from a supplier.
-
-1. The seller prepares the agreement terms.
-2. The buyer reviews the proposed terms.
-3. The required participants approve the agreement.
-4. The workflow records its current state.
-5. An AI assistant may explain terms or flag inconsistencies for human review.
-6. Once a real Canton integration is implemented, the appropriate contract workflow can be executed on the ledger.
-
-The current prototype demonstrates only parts of this journey. It does not yet execute step 6.
-
-## 4. The proposed solution
-
-CantonFlow AI aims to provide:
-
-- **One workspace:** View and search trade agreement records.
-- **Clear workflow states:** Identify pending, approved, completed, or rejected records.
-- **Participant-aware contracts:** Explore buyer and seller permissions through Daml.
-- **AI-assisted review:** Summarise terms and flag missing or inconsistent information.
-- **Integration transparency:** Clearly report whether Canton and AI services are actually configured.
-- **Auditable workflow design:** Build toward verifiable transaction states rather than relying only on interface labels.
-
-AI recommendations are advisory. Authorised participants and deterministic contract rules remain responsible for approvals.
-
-## 5. Why Canton?
-
-Canton is relevant to applications that require coordination between participants while respecting privacy and permissions.
-
-CantonFlow AI explores whether commercial agreement workflows can benefit from participant-controlled visibility and contract-enforced actions. The actual privacy and authorisation guarantees will depend on the implemented contracts, topology, and deployment configuration.
-
-## 6. Technology
-
-- Frontend: React, Vite, JavaScript, CSS.
-- Backend: Node.js HTTP API.
-- Contract language: Daml.
-- Target ledger: Canton Network.
-- AI: Configurable backend model provider, not yet enabled.
-- Development: Windows, PowerShell, VS Code.
-
-The frontend currently uses local API records. Daml source has been drafted but has not yet been compiled or deployed.
-
-## 7. Current project status
-
-| Capability | Status |
-| --- | --- |
-| Local API | Working |
-| Demo agreement records | Working |
-| React dashboard | Under development |
-| Create demo agreement | Implemented in local API flow |
-| Daml source | Drafted, not validated |
-| Canton ledger integration | Not connected |
-| AI agreement analysis | Not configured |
-| Authentication and production permissions | Not implemented |
-| Automated tests | To be added |
-
-## 8. Run locally
-
-### Backend
-
-```powershell
-cd "$HOME\CantonFlowAI\backend"
-npm start
+```bash
+bun install
+docker run -d --name cantonflow-pg --restart unless-stopped \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=cantonflow \
+  -v cantonflow_pgdata:/var/lib/postgresql -p 5432:5432 postgres:18-alpine
+bun run ledger   # local Canton ledger, saved in PostgreSQL (JSON Ledger API on port 6864)
+bun run server   # API on port 3001
+bun run dev      # app on port 5173, proxies /api to the API
 ```
 
-### Frontend
+Next time, `bun run db:up` restarts the existing database container. The ledger keeps its contracts and parties across restarts. `bun run ledger -- --memory` starts a throwaway ledger instead.
 
-After the required frontend packages are installed:
+### Production
 
-```powershell
-cd "$HOME\CantonFlowAI\frontend"
-npm run dev
+```bash
+bun run build   # builds the app into dist/
+bun run start   # serves the app and the API together on API_PORT
 ```
 
-Open the local URL printed by Vite, normally `http://localhost:5173`.
+In production the API is available under `/api` and every other path serves the app. Put it behind HTTPS, and set `TRUST_PROXY=1` only if your proxy overwrites `X-Forwarded-For`.
 
-### API health check
+### Backups
 
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/api/health
+```bash
+bun run backup                              # writes backups/<timestamp>/ (app and ledger databases)
+bash scripts/restore-db.sh backups/<timestamp>   # replaces current data; stop the API and ledger first
 ```
 
-## 9. Project structure
+### Environment variables
 
-```text
-CantonFlowAI/
-├── backend/
-│   ├── src/
-│   │   └── server.js
-│   ├── .env.example
-│   └── package.json
-├── contracts/
-│   └── CantonFlow.daml
-├── frontend/
-│   ├── index.html
-│   └── src/
-│       ├── components/
-│       ├── pages/
-│       ├── services/
-│       └── service/
-├── docs/
-│   ├── prd.md
-│   ├── architecture.md
-│   ├── agents.md
-│   ├── security.md
-│   └── testing.md
-└── README.md
+- `DATABASE_URL`: PostgreSQL connection string. Required.
+- `API_PORT`: API port. Optional, defaults to 3001.
+- `HOST`: address the API listens on. Optional, defaults to `127.0.0.1`. Use `0.0.0.0` in a container.
+- `NODE_ENV`: set to `production` (done by `bun run start`) to serve the built app.
+- `STATIC_DIR`: folder of the built app. Optional, defaults to `dist`.
+- `TRUST_PROXY`: set to `1` behind a reverse proxy that sets `X-Forwarded-For`. Optional.
+- `RATE_LIMIT_PER_MIN`: requests per minute per visitor. Optional, defaults to 600.
+- `DB_POOL_MAX`: database connections the API may hold. Optional, defaults to 20 (PostgreSQL allows 100 in total).
+- `RATE_LIMIT_DISABLED`: set to `1` to switch off every rate limit for a load test. Ignored in production.
+- `CANTON_DB_HOST`, `CANTON_DB_PORT`, `CANTON_DB_USER`, `CANTON_DB_PASSWORD`: PostgreSQL used by the local ledger. Optional, default to the local container.
+- `LEDGER_API_URL`: Canton JSON Ledger API base URL, for example `http://127.0.0.1:6864`. Optional. Without it the app reports the ledger as not configured and agreements stay database-only.
+- `LEDGER_USER_ID`: ledger user the API submits commands as. Optional, defaults to `participant_admin`.
+- `AI_BASE_URL`: base URL of an OpenAI-compatible chat completions API, for example `https://api.meta.ai/v1`. Optional. Without it AI review is disabled.
+- `AI_MODEL`: model name, for example `muse-spark-1.3`. Optional.
+- `AI_API_KEY`: AI provider key, kept on the server only. Optional.
+- `RPC_PROXY_BASE_URL`, `RPC_PROXY_TOKEN`, `RPC_PROXY_CHAINS`: provisioned by Arc Studio. Optional outside Arc Studio.
+
+### Notes
+
+Signing in needs a browser wallet. Sessions last 7 days and can be ended with Sign out.
+
+Evidence files (PDF, PNG, JPEG, WebP, up to 5 MB each, 10 per agreement) are stored in the database, so backups include them. A PDF must contain text to be reviewed by AI; scans should be uploaded as images. Files included in an AI review are sent to the configured AI provider.
+
+The Overview page includes an activity chart drawn from stored history. The app has light and dark themes (it follows the device by default) and a compact table view on the Agreements page.
+
+Alerts are in the app: a count on the Overview tab, a notice when a new item needs you, and the count in the browser tab title. There are no emails or push notifications.
+
+If the ledger is ever replaced by a fresh one, the app detects it and returns committed agreements to "not committed" so they can be committed again.
+
+### Checks
+
+```bash
+bun run check      # lint and typecheck
+bun run test       # unit tests
+bun run daml:test  # build the contract and run the Daml tests
+bun run test:api   # end-to-end API checks (needs the API, database and ledger running)
+bun run test:load  # load test with 20,000 agreements (see docs/load-test.md)
 ```
-
-## 10. Development principles
-
-1. Do not label demo data as real ledger data.
-2. Never expose AI keys or other secrets in browser code.
-3. Validate transaction inputs on the backend.
-4. Enforce critical permissions in the contract and ledger, not only in the UI.
-5. Clearly distinguish implemented features from planned features.
-6. Prefer small, testable changes and free development tools where possible.
-
-## 11. Project vision
-
-CantonFlow AI aims to make private commercial workflows easier to understand, coordinate, and verify. Its success depends on delivering a working integration, enforcing permissions correctly, and demonstrating value to actual business users—not merely producing an attractive dashboard.

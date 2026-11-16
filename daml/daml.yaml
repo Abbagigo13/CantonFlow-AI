@@ -1,0 +1,7 @@
+sdk-version: 3.6.3
+name: cantonflow
+version: 0.2.0
+source: src
+dependencies:
+  - daml-prim
+  - daml-stdlib

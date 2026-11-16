@@ -1,0 +1,39 @@
+// Start-up script for the persistent local ledger. The built-in sandbox script
+// creates the synchronizer every time it runs, which fails once state is kept.
+// This one creates it only on the first start and reconnects afterwards.
+import com.digitalasset.canton.config.RequireTypes.PositiveInt
+import com.digitalasset.canton.version.ProtocolVersion
+
+val protocol = ProtocolVersion.forSynchronizer
+val syncName = "synchronizer-1"
+
+if (!sequencer1.health.initialized()) {
+  val staticParams = StaticSynchronizerParameters.defaults(
+    sequencer1.config.crypto,
+    protocol,
+    topologyChangeDelay = NonNegativeFiniteDuration.Zero,
+  )
+  bootstrap.synchronizer(
+    syncName,
+    Seq(sequencer1),
+    Seq(mediator1),
+    Seq(sequencer1, mediator1),
+    PositiveInt.one,
+    staticParams,
+  )
+  println("Created a new synchronizer.")
+} else {
+  println("Reusing the existing synchronizer.")
+}
+
+participants.local.foreach { p =>
+  if (p.synchronizers.list_registered().isEmpty) {
+    p.synchronizers.connect_local(sequencer1, syncName)
+    println(s"${p.name} connected to $syncName for the first time.")
+  }
+  // Re-uploading an identical DAR is a no-op, so this is safe on every start.
+  sys.env.get("CF_DAR").foreach { dar => p.dars.upload(dar) }
+  println(s"${p.name} listening at ports: ${p.config.ledgerApi.port.unwrap}(gRPC) and ${p.config.httpLedgerApi.port.unwrap}(HTTP)")
+}
+
+println("Canton sandbox is ready.")

@@ -1,0 +1,48 @@
+module CantonFlow where
+
+-- Lifecycle of a trade agreement on the ledger.
+data AgreementStatus
+  = AwaitingApproval
+  | Approved
+  | Completed
+  | Rejected
+  deriving (Eq, Show)
+
+-- The seller authorises creation. The buyer is an observer and can only act
+-- through the choices below, so each party's authority is explicit:
+--   buyer:  ApproveByBuyer, RejectByBuyer
+--   seller: ConfirmBySeller
+-- Every transition archives the previous contract and creates its successor,
+-- so the ledger keeps a verifiable history of who did what.
+template TradeAgreement
+  with
+    agreementId : Text
+    title : Text
+    buyer : Party
+    seller : Party
+    amount : Decimal
+    currency : Text
+    status : AgreementStatus
+  where
+    signatory seller
+    observer buyer
+
+    ensure amount > 0.0 && buyer /= seller && agreementId /= "" && title /= ""
+
+    choice ApproveByBuyer : ContractId TradeAgreement
+      controller buyer
+      do
+        assertMsg "Only an agreement awaiting approval can be approved" (status == AwaitingApproval)
+        create this with status = Approved
+
+    choice RejectByBuyer : ContractId TradeAgreement
+      controller buyer
+      do
+        assertMsg "Only an agreement awaiting approval can be rejected" (status == AwaitingApproval)
+        create this with status = Rejected
+
+    choice ConfirmBySeller : ContractId TradeAgreement
+      controller seller
+      do
+        assertMsg "The buyer must approve before the seller confirms" (status == Approved)
+        create this with status = Completed
